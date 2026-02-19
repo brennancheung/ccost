@@ -1,4 +1,5 @@
 import Foundation
+import Carbon
 import CCostLib
 
 struct UsageWindow: Codable, Sendable {
@@ -78,6 +79,27 @@ enum DisplayFormat: String, CaseIterable, Sendable {
     case costOnly = "costOnly"
     case percentOnly = "percentOnly"
     case compact = "compact"
+}
+
+enum HotKeyCombo: String, CaseIterable, Sendable {
+    case ctrlShiftC
+    case optionShiftC
+    case ctrlOptionC
+    case disabled
+
+    var keyCode: UInt32 {
+        8 // kVK_ANSI_C
+    }
+
+    var carbonModifiers: UInt32 {
+        let modMap: [HotKeyCombo: UInt32] = [
+            .ctrlShiftC: UInt32(controlKey | shiftKey),
+            .optionShiftC: UInt32(optionKey | shiftKey),
+            .ctrlOptionC: UInt32(controlKey | optionKey),
+            .disabled: 0,
+        ]
+        return modMap[self] ?? 0
+    }
 }
 
 enum ServiceError: Error, Sendable {

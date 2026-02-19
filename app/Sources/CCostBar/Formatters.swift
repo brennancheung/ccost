@@ -78,6 +78,16 @@ enum Formatters {
         return formatter.string(from: date)
     }
 
+    static func hotKeyComboLabel(_ combo: HotKeyCombo) -> String {
+        let labels: [HotKeyCombo: String] = [
+            .ctrlShiftC: "⌃⇧C",
+            .optionShiftC: "⌥⇧C",
+            .ctrlOptionC: "⌃⌥C",
+            .disabled: "Disabled",
+        ]
+        return labels[combo] ?? ""
+    }
+
     static func projectedUsage(utilization: Double, resetsAt: Date) -> Double? {
         let totalSeconds = 7.0 * 24 * 3600
         let remaining = resetsAt.timeIntervalSinceNow

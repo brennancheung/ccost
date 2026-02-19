@@ -16,6 +16,8 @@ final class StatusBarController: NSObject {
     private var lastCostRefresh: Date?
     private var lastRateLimitRefresh: Date?
     private var historyWindowController: HistoryWindowController?
+    private var statsPanelController: StatsPanelController?
+    private var globalHotKey: GlobalHotKey?
 
     override init() {
         super.init()
@@ -33,6 +35,7 @@ final class StatusBarController: NSObject {
         }
 
         buildMenu()
+        registerHotKey()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             guard let self else { return }
@@ -51,6 +54,7 @@ final class StatusBarController: NSObject {
             lastCostRefresh = Date()
             updateMenuBarTitle()
             buildMenu()
+            updateStatsPanel()
         }
     }
 
@@ -60,6 +64,7 @@ final class StatusBarController: NSObject {
             lastRateLimitRefresh = Date()
             updateMenuBarTitle()
             buildMenu()
+            updateStatsPanel()
         }
     }
 
@@ -74,6 +79,37 @@ final class StatusBarController: NSObject {
             updateMenuBarTitle()
             buildMenu()
         }
+    }
+
+    private func registerHotKey() {
+        globalHotKey?.unregister()
+        globalHotKey = nil
+        let combo = settings.hotKeyCombo
+        guard combo != .disabled else { return }
+        globalHotKey = GlobalHotKey(keyCode: combo.keyCode, modifiers: combo.carbonModifiers) { [weak self] in
+            self?.toggleStatsPanel()
+        }
+    }
+
+    private func toggleStatsPanel() {
+        let controller = statsPanelController ?? StatsPanelController()
+        statsPanelController = controller
+        controller.costData = costData
+        controller.rateLimitData = rateLimitData
+        controller.costError = costError
+        controller.rateLimitError = rateLimitError
+        controller.lastRefresh = lastCostRefresh
+        controller.toggle()
+    }
+
+    private func updateStatsPanel() {
+        guard let controller = statsPanelController else { return }
+        controller.costData = costData
+        controller.rateLimitData = rateLimitData
+        controller.costError = costError
+        controller.rateLimitError = rateLimitError
+        controller.lastRefresh = lastCostRefresh
+        controller.update()
     }
 
     private func fetchCost() async {
@@ -135,6 +171,7 @@ final class StatusBarController: NSObject {
         addRateLimitRefreshSubmenu(to: menu)
         menu.addItem(NSMenuItem.separator())
         addDisplayFormatSubmenu(to: menu)
+        addHotKeySubmenu(to: menu)
         menu.addItem(NSMenuItem.separator())
         addLaunchAtLoginItem(to: menu)
         menu.addItem(NSMenuItem.separator())
@@ -210,6 +247,24 @@ final class StatusBarController: NSObject {
         menu.addItem(container)
     }
 
+    private func addHotKeySubmenu(to menu: NSMenu) {
+        let submenu = NSMenu()
+        let current = settings.hotKeyCombo
+
+        for combo in HotKeyCombo.allCases {
+            let label = Formatters.hotKeyComboLabel(combo)
+            let item = NSMenuItem(title: label, action: #selector(hotKeySelected(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = combo.rawValue as NSString
+            item.state = (combo == current) ? .on : .off
+            submenu.addItem(item)
+        }
+
+        let container = NSMenuItem(title: "Global Hotkey", action: nil, keyEquivalent: "")
+        container.submenu = submenu
+        menu.addItem(container)
+    }
+
     private func addLaunchAtLoginItem(to menu: NSMenu) {
         let item = NSMenuItem(title: "Launch at Login", action: #selector(launchAtLoginToggled), keyEquivalent: "")
         item.target = self
@@ -257,6 +312,14 @@ final class StatusBarController: NSObject {
         guard let format = DisplayFormat(rawValue: rawValue as String) else { return }
         settings.displayFormat = format
         updateMenuBarTitle()
+        rebuildMenuDeferred()
+    }
+
+    @objc private func hotKeySelected(_ sender: NSMenuItem) {
+        guard let rawValue = sender.representedObject as? NSString else { return }
+        guard let combo = HotKeyCombo(rawValue: rawValue as String) else { return }
+        settings.hotKeyCombo = combo
+        registerHotKey()
         rebuildMenuDeferred()
     }
 

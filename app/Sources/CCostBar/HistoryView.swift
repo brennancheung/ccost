@@ -99,6 +99,7 @@ final class HistoryContentView: NSView {
     override var isFlipped: Bool { true }
 
     var availableWidth: CGFloat = 720
+    var drawsBackground = true
     private var data: [DailySummary] = []
 
     // Layout
@@ -229,6 +230,7 @@ final class HistoryContentView: NSView {
     // MARK: - Sections
 
     private func drawBackground() {
+        guard drawsBackground else { return }
         canvasColor.setFill()
         NSBezierPath.fill(bounds)
     }
@@ -559,7 +561,7 @@ final class HistoryContentView: NSView {
                   let rhsDate = isoDateFormatter.date(from: rhs.date) else {
                 return lhs.date < rhs.date
             }
-            return lhsDate < rhsDate
+            return lhsDate > rhsDate
         }
     }
 }
