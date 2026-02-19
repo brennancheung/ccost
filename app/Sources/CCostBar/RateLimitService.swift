@@ -24,16 +24,19 @@ struct RateLimitService: Sendable {
             throw ServiceError.networkFailure("HTTP \(httpResponse.statusCode): \(body.prefix(200))")
         }
 
-        let usage = try JSONDecoder().decode(UsageResponse.self, from: data)
+        let usage: UsageResponse
+        do {
+            usage = try JSONDecoder().decode(UsageResponse.self, from: data)
+        } catch {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw ServiceError.parseFailure("Failed to decode usage: \(error.localizedDescription) body=\(body.prefix(200))")
+        }
+
         let isoFormatter = ISO8601DateFormatter()
         isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
-        let fiveHourReset = isoFormatter.date(from: usage.five_hour.resets_at)
-            ?? parseWithoutFractional(usage.five_hour.resets_at)
-            ?? Date()
-        let sevenDayReset = isoFormatter.date(from: usage.seven_day.resets_at)
-            ?? parseWithoutFractional(usage.seven_day.resets_at)
-            ?? Date()
+        let fiveHourReset = usage.five_hour.resets_at.flatMap { isoFormatter.date(from: $0) ?? parseWithoutFractional($0) }
+        let sevenDayReset = usage.seven_day.resets_at.flatMap { isoFormatter.date(from: $0) ?? parseWithoutFractional($0) }
 
         return RateLimitData(
             fiveHourUtilization: usage.five_hour.utilization,

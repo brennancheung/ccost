@@ -4,7 +4,7 @@ import CCostLib
 
 struct UsageWindow: Codable, Sendable {
     let utilization: Double
-    let resets_at: String
+    let resets_at: String?
 
     enum CodingKeys: String, CodingKey {
         case utilization
@@ -41,9 +41,9 @@ struct CostData: Sendable {
 
 struct RateLimitData: Sendable {
     let fiveHourUtilization: Double
-    let fiveHourResetsAt: Date
+    let fiveHourResetsAt: Date?
     let sevenDayUtilization: Double
-    let sevenDayResetsAt: Date
+    let sevenDayResetsAt: Date?
 }
 
 enum CostRefreshInterval: Int, CaseIterable, Sendable {

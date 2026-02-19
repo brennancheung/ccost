@@ -122,7 +122,7 @@ final class MenuContentView: NSView {
         var y = startY
 
         if let err = rateLimitError {
-            y = addLabel("Rate limit error: \(err)", at: y, font: .systemFont(ofSize: 12), color: .systemRed)
+            y = addLabel("Usage error: \(err)", at: y, font: .systemFont(ofSize: 12), color: .systemRed)
             return y
         }
 
@@ -138,7 +138,7 @@ final class MenuContentView: NSView {
         return y
     }
 
-    private func addUsageWindow(_ title: String, utilization: Double, resetsAt: Date, showProjection: Bool, at startY: CGFloat) -> CGFloat {
+    private func addUsageWindow(_ title: String, utilization: Double, resetsAt: Date?, showProjection: Bool, at startY: CGFloat) -> CGFloat {
         var y = startY
         let barWidth = frame.width - padding * 2
 
@@ -160,6 +160,11 @@ final class MenuContentView: NSView {
         y += barHeight + 6
 
         // Reset time
+        guard let resetsAt else {
+            y = addLabel("No reset scheduled", at: y, font: .systemFont(ofSize: 11), color: .secondaryLabelColor)
+            return y
+        }
+
         let resetStr = "Resets in \(Formatters.formatTimeRemaining(until: resetsAt))"
         y = addLabel(resetStr, at: y, font: .systemFont(ofSize: 11), color: .secondaryLabelColor)
 
