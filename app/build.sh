@@ -10,10 +10,18 @@ APP_DIR=".build/release/CCostBar.app"
 CONTENTS="$APP_DIR/Contents"
 MACOS="$CONTENTS/MacOS"
 
+RESOURCES="$CONTENTS/Resources"
+
 rm -rf "$APP_DIR"
-mkdir -p "$MACOS"
+mkdir -p "$MACOS" "$RESOURCES"
 
 cp .build/release/CCostBar "$MACOS/CCostBar"
+
+# Copy bundled resources (fonts etc.)
+BUNDLE_RESOURCES=".build/release/CCostBar_CCostBar.bundle"
+if [ -d "$BUNDLE_RESOURCES" ]; then
+    cp -R "$BUNDLE_RESOURCES" "$RESOURCES/"
+fi
 
 cat > "$CONTENTS/Info.plist" << 'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>

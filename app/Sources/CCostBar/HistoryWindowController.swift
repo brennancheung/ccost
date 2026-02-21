@@ -37,7 +37,8 @@ final class HistoryWindowController {
         w.setFrameAutosaveName("CCostBarHistoryWindow")
         w.isReleasedWhenClosed = false
         w.level = .floating
-        w.backgroundColor = NSColor(calibratedRed: 0.95, green: 0.95, blue: 0.93, alpha: 1)
+        w.backgroundColor = Theme.background
+        w.appearance = NSAppearance(named: .darkAqua)
         w.minSize = NSSize(width: 640, height: 320)
         w.center()
 

@@ -21,25 +21,25 @@ final class HistoryView: NSView {
 
     private func setup() {
         wantsLayer = true
-        layer?.backgroundColor = NSColor(calibratedRed: 0.95, green: 0.95, blue: 0.93, alpha: 1).cgColor
+        layer?.backgroundColor = Theme.background.cgColor
 
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        titleLabel.font = NSFont.systemFont(ofSize: 22, weight: .semibold)
-        titleLabel.textColor = .labelColor
+        titleLabel.font = Theme.font(ofSize: 22, weight: .semibold)
+        titleLabel.textColor = Theme.textPrimary
         addSubview(titleLabel)
 
         subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
-        subtitleLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-        subtitleLabel.textColor = .secondaryLabelColor
+        subtitleLabel.font = Theme.font(ofSize: 12)
+        subtitleLabel.textColor = Theme.textSecondary
         addSubview(subtitleLabel)
 
         cardView.translatesAutoresizingMaskIntoConstraints = false
         cardView.wantsLayer = true
         cardView.layer?.cornerRadius = 12
-        cardView.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.96).cgColor
+        cardView.layer?.backgroundColor = Theme.cardBackground.cgColor
         cardView.layer?.borderWidth = 1
-        cardView.layer?.borderColor = NSColor.black.withAlphaComponent(0.06).cgColor
-        cardView.layer?.shadowColor = NSColor.black.withAlphaComponent(0.12).cgColor
+        cardView.layer?.borderColor = Theme.cardBorder.cgColor
+        cardView.layer?.shadowColor = Theme.cardGlow.cgColor
         cardView.layer?.shadowOpacity = 1
         cardView.layer?.shadowRadius = 14
         cardView.layer?.shadowOffset = NSSize(width: 0, height: -2)
@@ -100,11 +100,12 @@ final class HistoryContentView: NSView {
 
     var availableWidth: CGFloat = 720
     var drawsBackground = true
+    var showKPIStrip: Bool = true
     private var data: [DailySummary] = []
 
     // Layout
     private let outerPadding: CGFloat = 10
-    private let kpiBandHeight: CGFloat = 30
+    private let kpiBandHeight: CGFloat = 48
     private let headerHeight: CGFloat = 18
     private let rowHeight: CGFloat = 18
     private let rowSpacing: CGFloat = 1
@@ -128,11 +129,11 @@ final class HistoryContentView: NSView {
     private var ticks: [Double] = [0, 5, 10]
 
     // Colors
-    private let canvasColor = NSColor(calibratedRed: 0.985, green: 0.984, blue: 0.978, alpha: 1)
-    private let zebraColor = NSColor(calibratedWhite: 0.0, alpha: 0.022)
-    private let trackColor = NSColor(calibratedWhite: 0.82, alpha: 0.45)
-    private let accentStart = NSColor(srgbRed: 0.13, green: 0.48, blue: 0.94, alpha: 0.96)
-    private let accentEnd = NSColor(srgbRed: 0.22, green: 0.58, blue: 0.97, alpha: 0.96)
+    private let canvasColor = Theme.cardBackground
+    private let zebraColor = Theme.zebraStripe
+    private let trackColor = Theme.barTrack
+    private let accentStart = Theme.historyBarStart
+    private let accentEnd = Theme.historyBarEnd
 
     // Formatters
     private let isoDateFormatter: DateFormatter = {
@@ -158,14 +159,14 @@ final class HistoryContentView: NSView {
     }()
 
     // Fonts
-    private let dateFont = NSFont.systemFont(ofSize: 10.5, weight: .semibold)
-    private let headerFont = NSFont.systemFont(ofSize: 10, weight: .semibold)
-    private let valueFont = NSFont.monospacedDigitSystemFont(ofSize: 10.5, weight: .medium)
-    private let tickFont = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular)
-    private let totalLabelFont = NSFont.systemFont(ofSize: 10.5, weight: .semibold)
-    private let totalValueFont = NSFont.monospacedDigitSystemFont(ofSize: 10.5, weight: .semibold)
-    private let kpiTitleFont = NSFont.systemFont(ofSize: 9, weight: .semibold)
-    private let kpiValueFont = NSFont.systemFont(ofSize: 11, weight: .semibold)
+    private let dateFont = Theme.font(ofSize: 10.5, weight: .semibold)
+    private let headerFont = Theme.font(ofSize: 10, weight: .semibold)
+    private let valueFont = Theme.monospacedDigitFont(ofSize: 10.5, weight: .medium)
+    private let tickFont = Theme.monospacedDigitFont(ofSize: 9)
+    private let totalLabelFont = Theme.font(ofSize: 10.5, weight: .semibold)
+    private let totalValueFont = Theme.monospacedDigitFont(ofSize: 10.5, weight: .semibold)
+    private let kpiTitleFont = Theme.font(ofSize: 9, weight: .semibold)
+    private let kpiValueFont = Theme.monospacedDigitFont(ofSize: 13, weight: .bold)
 
     // Computed layout
     private var dataColumnsWidth: CGFloat { colCost + colSess + colIn + colOut + colCacheW + colCacheR }
@@ -190,7 +191,8 @@ final class HistoryContentView: NSView {
         maxCost = params.maxValue
         ticks = params.ticks
 
-        let height = outerPadding + kpiBandHeight + 8 + headerHeight + 4 + rowAreaHeight + 4 + totalRowHeight + 6 + axisBandHeight + footerPadding
+        let kpiHeight: CGFloat = showKPIStrip ? (kpiBandHeight + 8) : 0
+        let height = outerPadding + kpiHeight + headerHeight + 4 + rowAreaHeight + 4 + totalRowHeight + 6 + axisBandHeight + footerPadding
         frame = NSRect(x: 0, y: 0, width: max(availableWidth, 560), height: max(height, 230))
         needsDisplay = true
     }
@@ -204,10 +206,13 @@ final class HistoryContentView: NSView {
             return
         }
 
-        let kpiY = outerPadding
-        drawKPIStrip(y: kpiY)
+        var currentY = outerPadding
+        if showKPIStrip {
+            drawKPIStrip(y: currentY)
+            currentY += kpiBandHeight + 8
+        }
 
-        let headerY = kpiY + kpiBandHeight + 8
+        let headerY = currentY
         drawHeader(y: headerY)
 
         let rowsStartY = headerY + headerHeight + 4
@@ -217,14 +222,14 @@ final class HistoryContentView: NSView {
         }
 
         let separatorY = rowsStartY + rowAreaHeight + 4
-        drawHLine(y: separatorY, alpha: 0.16)
+        drawHLine(y: separatorY)
 
         let totalY = separatorY + 3
         drawTotalRow(y: totalY)
 
-        drawVLine(x: dividerX, from: headerY + 2, to: totalY + totalRowHeight, alpha: 0.11)
+        drawVLine(x: dividerX, from: headerY + 2, to: totalY + totalRowHeight)
         let bottomAxisY = totalY + totalRowHeight + 6
-        drawAxisLabels(y: bottomAxisY + 1, color: .tertiaryLabelColor)
+        drawAxisLabels(y: bottomAxisY + 1, color: Theme.textTertiary)
     }
 
     // MARK: - Sections
@@ -262,36 +267,34 @@ final class HistoryContentView: NSView {
     private func drawKPIChip(title: String, value: String, x: CGFloat, y: CGFloat, maxWidth: CGFloat) -> CGFloat {
         let titleAttrs: [NSAttributedString.Key: Any] = [
             .font: kpiTitleFont,
-            .foregroundColor: NSColor.tertiaryLabelColor,
+            .foregroundColor: Theme.textTertiary,
         ]
         let valueAttrs: [NSAttributedString.Key: Any] = [
-            .font: kpiValueFont,
-            .foregroundColor: NSColor.labelColor,
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .bold),
+            .foregroundColor: Theme.textPrimary,
         ]
 
         let titleWidth = (title as NSString).size(withAttributes: titleAttrs).width
         let valueWidth = (value as NSString).size(withAttributes: valueAttrs).width
-        let width = min(max(126, titleWidth + valueWidth + 30), maxWidth)
+        let width = min(max(126, max(titleWidth, valueWidth) + 20), maxWidth)
 
-        let rect = NSRect(x: x, y: y, width: width, height: 22)
+        let rect = NSRect(x: x, y: y, width: width, height: kpiBandHeight)
         let path = NSBezierPath(roundedRect: rect, xRadius: 8, yRadius: 8)
-        NSColor.white.withAlphaComponent(0.88).setFill()
+        Theme.kpiBackground.setFill()
         path.fill()
-        NSColor.black.withAlphaComponent(0.06).setStroke()
+        Theme.kpiBorder.setStroke()
         path.lineWidth = 1
         path.stroke()
 
-        (title as NSString).draw(at: NSPoint(x: x + 8, y: y + 6), withAttributes: titleAttrs)
-
-        let valueRect = NSRect(x: x + 8 + titleWidth + 8, y: y + 4, width: width - titleWidth - 22, height: 14)
-        (value as NSString).draw(in: valueRect, withAttributes: valueAttrs)
+        (title as NSString).draw(at: NSPoint(x: x + 10, y: y + 6), withAttributes: titleAttrs)
+        (value as NSString).draw(at: NSPoint(x: x + 10, y: y + 22), withAttributes: valueAttrs)
         return width
     }
 
     private func drawHeader(y: CGFloat) {
-        drawAxisLabels(y: y, color: .secondaryLabelColor)
+        drawAxisLabels(y: y, color: Theme.textTertiary)
         drawColumnHeaders(y: y)
-        drawHLine(y: y + headerHeight - 2, alpha: 0.18)
+        drawHLine(y: y + headerHeight - 2)
     }
 
     private func drawRow(_ day: DailySummary, at y: CGFloat, index: Int) {
@@ -302,11 +305,11 @@ final class HistoryContentView: NSView {
 
         let dateAttrs: [NSAttributedString.Key: Any] = [
             .font: dateFont,
-            .foregroundColor: day.cost > 0 ? NSColor.labelColor : NSColor.secondaryLabelColor,
+            .foregroundColor: day.cost > 0 ? Theme.textPrimary : Theme.textSecondary,
         ]
         (formatDateShort(day.date) as NSString).draw(at: NSPoint(x: outerPadding, y: y + 3), withAttributes: dateAttrs)
 
-        NSColor.separatorColor.withAlphaComponent(0.15).setStroke()
+        Theme.divider.setStroke()
         for tick in ticks {
             let x = barLeft + (barWidth * CGFloat(tick / maxCost))
             let path = NSBezierPath()
@@ -336,7 +339,7 @@ final class HistoryContentView: NSView {
 
         let valAttrs: [NSAttributedString.Key: Any] = [
             .font: valueFont,
-            .foregroundColor: day.cost > 0 ? NSColor.labelColor : NSColor.secondaryLabelColor,
+            .foregroundColor: day.cost > 0 ? Theme.textPrimary : Theme.textSecondary,
         ]
 
         var x = tableLeft
@@ -355,20 +358,20 @@ final class HistoryContentView: NSView {
 
     private func drawTotalRow(y: CGFloat) {
         let totalRect = NSRect(x: outerPadding - 2, y: y, width: frame.width - ((outerPadding - 2) * 2), height: totalRowHeight)
-        NSColor.controlAccentColor.withAlphaComponent(0.08).setFill()
+        Theme.totalRowBackground.setFill()
         NSBezierPath.fill(totalRect)
-        drawHLine(y: y, alpha: 0.2)
+        drawHLine(y: y)
 
         let labelAttrs: [NSAttributedString.Key: Any] = [
             .font: totalLabelFont,
-            .foregroundColor: NSColor.labelColor,
+            .foregroundColor: Theme.textPrimary,
         ]
         ("TOTAL (30D)" as NSString).draw(at: NSPoint(x: outerPadding, y: y + 5), withAttributes: labelAttrs)
 
         let summary = summarize()
         let valAttrs: [NSAttributedString.Key: Any] = [
             .font: totalValueFont,
-            .foregroundColor: NSColor.labelColor,
+            .foregroundColor: Theme.textPrimary,
         ]
 
         var x = tableLeft
@@ -406,7 +409,7 @@ final class HistoryContentView: NSView {
     private func drawColumnHeaders(y: CGFloat) {
         let attrs: [NSAttributedString.Key: Any] = [
             .font: headerFont,
-            .foregroundColor: NSColor.secondaryLabelColor,
+            .foregroundColor: Theme.textSecondary,
         ]
         let headers: [(String, CGFloat)] = [
             ("Cost", colCost),
@@ -430,8 +433,8 @@ final class HistoryContentView: NSView {
         (text as NSString).draw(at: NSPoint(x: x + width - size.width - 6, y: y), withAttributes: attrs)
     }
 
-    private func drawHLine(y: CGFloat, alpha: CGFloat) {
-        NSColor.separatorColor.withAlphaComponent(alpha).setStroke()
+    private func drawHLine(y: CGFloat) {
+        Theme.divider.setStroke()
         let path = NSBezierPath()
         path.move(to: NSPoint(x: outerPadding, y: y))
         path.line(to: NSPoint(x: frame.width - outerPadding, y: y))
@@ -439,8 +442,8 @@ final class HistoryContentView: NSView {
         path.stroke()
     }
 
-    private func drawVLine(x: CGFloat, from y1: CGFloat, to y2: CGFloat, alpha: CGFloat) {
-        NSColor.separatorColor.withAlphaComponent(alpha).setStroke()
+    private func drawVLine(x: CGFloat, from y1: CGFloat, to y2: CGFloat) {
+        Theme.divider.setStroke()
         let path = NSBezierPath()
         path.move(to: NSPoint(x: x, y: y1))
         path.line(to: NSPoint(x: x, y: y2))
@@ -450,12 +453,12 @@ final class HistoryContentView: NSView {
 
     private func drawEmptyState() {
         let titleAttrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 15, weight: .semibold),
-            .foregroundColor: NSColor.secondaryLabelColor,
+            .font: Theme.font(ofSize: 15, weight: .semibold),
+            .foregroundColor: Theme.textSecondary,
         ]
         let subtitleAttrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 12),
-            .foregroundColor: NSColor.tertiaryLabelColor,
+            .font: Theme.font(ofSize: 12),
+            .foregroundColor: Theme.textTertiary,
         ]
 
         let title = "No cost history yet" as NSString

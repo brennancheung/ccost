@@ -7,9 +7,12 @@ final class MenuContentView: NSView {
     private let rateLimitError: String?
     private let lastRefresh: Date?
 
-    private let padding: CGFloat = 16
-    private let sectionSpacing: CGFloat = 14
+    private let padding: CGFloat = 12
+    private let cardPadding: CGFloat = 12
+    private let sectionSpacing: CGFloat = 10
     private let lineSpacing: CGFloat = 4
+
+    private var isWideLayout: Bool { frame.width > 400 }
 
     init(
         costData: CostData?,
@@ -25,6 +28,7 @@ final class MenuContentView: NSView {
         self.rateLimitError = rateLimitError
         self.lastRefresh = lastRefresh
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: 10))
+        wantsLayer = true
         let height = layoutContent()
         self.frame = NSRect(x: 0, y: 0, width: width, height: height)
     }
@@ -36,18 +40,13 @@ final class MenuContentView: NSView {
     private func layoutContent() -> CGFloat {
         var y: CGFloat = padding
 
-        y = addCostSection(at: y)
+        y = addCostCard(at: y)
         y += sectionSpacing
-        y = addDivider(at: y)
+        y = addWeeklyUsageCard(at: y)
         y += sectionSpacing
-        y = addRateLimitSection(at: y)
-        y += sectionSpacing
-        y = addDivider(at: y)
-        y += 10
         y = addLastRefresh(at: y)
         y += padding
 
-        // Flip all subviews since NSView is bottom-up
         let totalHeight = y
         for sub in subviews {
             sub.frame.origin.y = totalHeight - sub.frame.origin.y - sub.frame.height
@@ -55,124 +54,191 @@ final class MenuContentView: NSView {
         return totalHeight
     }
 
-    // MARK: - Cost Section
+    // MARK: - Cost Card (Today's Spend + Gauge)
 
-    private func addCostSection(at startY: CGFloat) -> CGFloat {
-        var y = startY
+    private func addCostCard(at startY: CGFloat) -> CGFloat {
+        let cardX = padding
+        let cardWidth = frame.width - padding * 2
+
+        var y = startY + cardPadding
 
         if let err = costError {
-            y = addLabel("Cost error: \(err)", at: y, font: .systemFont(ofSize: 12), color: .systemRed)
-            return y
+            y = addLabel("Cost error: \(err)", at: y, font: Theme.font(ofSize: 12), color: Theme.errorRed, inset: cardX + cardPadding)
+            let cardHeight = y - startY + cardPadding
+            addCardBackground(at: startY, x: cardX, width: cardWidth, height: cardHeight)
+            return startY + cardHeight
         }
 
         let cost = costData ?? CostData(cost: 0, sessions: 0, inputTokens: 0, outputTokens: 0, cacheCreationInputTokens: 0, cacheReadInputTokens: 0)
 
-        // "Today" header
-        y = addLabel("Today", at: y, font: .systemFont(ofSize: 11, weight: .medium), color: .secondaryLabelColor)
-        y += 2
+        let contentLeft = cardX + cardPadding
+        let contentWidth = cardWidth - cardPadding * 2
+
+        // "TODAY'S SPEND" header
+        y = addLabel("TODAY'S SPEND", at: y, font: Theme.font(ofSize: 9, weight: .bold), color: Theme.textAccent, inset: contentLeft)
 
         // Big cost number
-        y = addLabel(Formatters.formatCost(cost.cost), at: y, font: .systemFont(ofSize: 28, weight: .semibold), color: .labelColor)
-        y += 8
+        let costWeight: NSFont.Weight = isWideLayout ? .semibold : .bold
+        y = addLabel(Formatters.formatCost(cost.cost), at: y, font: Theme.font(ofSize: 26, weight: costWeight), color: Theme.textPrimary, inset: contentLeft)
+        y += 4
 
-        // Stats grid
-        let leftCol: [(String, String)] = [
+        // Determine gauge and stats layout
+        let rl = rateLimitData
+        let gaugeSize: CGFloat = isWideLayout ? 150 : 100
+
+        if isWideLayout {
+            // Side-by-side: stats grid on left ~55%, gauge on right ~45%
+            let statsWidth = contentWidth * 0.55
+            let gaugeX = contentLeft + statsWidth
+            let statsStartY = y
+
+            y = addStatsGrid(cost, at: y, x: contentLeft, width: statsWidth - 8)
+
+            // Gauge on the right
+            if let rl {
+                let gaugeView = CircularGaugeView(
+                    utilization: rl.fiveHourUtilization,
+                    resetsAt: rl.fiveHourResetsAt,
+                    frame: NSRect(x: gaugeX, y: statsStartY - 4, width: contentWidth - statsWidth, height: gaugeSize)
+                )
+                addSubview(gaugeView)
+                y = max(y, statsStartY + gaugeSize)
+            }
+        } else {
+            // Stacked: stats grid then gauge below
+            y = addStatsGrid(cost, at: y, x: contentLeft, width: contentWidth)
+            y += 6
+
+            if let rl {
+                let gaugeView = CircularGaugeView(
+                    utilization: rl.fiveHourUtilization,
+                    resetsAt: rl.fiveHourResetsAt,
+                    frame: NSRect(x: contentLeft + (contentWidth - gaugeSize) / 2, y: y, width: gaugeSize, height: gaugeSize)
+                )
+                addSubview(gaugeView)
+                y += gaugeSize + 4
+            }
+        }
+
+        y += cardPadding
+        let cardHeight = y - startY
+        addCardBackground(at: startY, x: cardX, width: cardWidth, height: cardHeight)
+        return y
+    }
+
+    private func addStatsGrid(_ cost: CostData, at startY: CGFloat, x: CGFloat, width: CGFloat) -> CGFloat {
+        var y = startY
+        let colGap: CGFloat = 6
+        let colWidth = (width - colGap * 2) / 3
+
+        let row1: [(String, String)] = [
             ("Sessions", "\(cost.sessions)"),
             ("Input", Formatters.formatTokens(cost.inputTokens)),
             ("Cache write", Formatters.formatTokens(cost.cacheCreationInputTokens)),
         ]
-        let rightCol: [(String, String)] = [
-            ("", ""),
+        let row2: [(String, String)] = [
+            ("Cache write", Formatters.formatTokens(cost.cacheCreationInputTokens)),
             ("Output", Formatters.formatTokens(cost.outputTokens)),
             ("Cache read", Formatters.formatTokens(cost.cacheReadInputTokens)),
         ]
 
-        let halfWidth = (frame.width - padding * 2 - 12) / 2
-        for i in 0..<leftCol.count {
-            let (lLabel, lValue) = leftCol[i]
-            let (rLabel, rValue) = rightCol[i]
-
-            guard !lLabel.isEmpty else { continue }
-
-            let rowY = y
-            addStatPair(lLabel, value: lValue, at: rowY, x: padding, width: halfWidth)
-            if !rLabel.isEmpty {
-                addStatPair(rLabel, value: rValue, at: rowY, x: padding + halfWidth + 12, width: halfWidth)
+        for row in [row1, row2] {
+            for (colIdx, pair) in row.enumerated() {
+                let colX = x + CGFloat(colIdx) * (colWidth + colGap)
+                addStackedStat(pair.0, value: pair.1, at: y, x: colX, width: colWidth)
             }
-            y += 18
+            y += 32
         }
-
         return y
     }
 
-    private func addStatPair(_ label: String, value: String, at y: CGFloat, x: CGFloat, width: CGFloat) {
-        let labelField = makeTextField(label, font: .systemFont(ofSize: 11), color: .secondaryLabelColor)
-        labelField.frame = NSRect(x: x, y: y, width: width, height: 14)
+    private func addStackedStat(_ label: String, value: String, at y: CGFloat, x: CGFloat, width: CGFloat) {
+        let labelField = makeTextField(label, font: Theme.font(ofSize: 9), color: Theme.textSecondary)
+        labelField.frame = NSRect(x: x, y: y, width: width, height: 12)
         addSubview(labelField)
 
-        let valueField = makeTextField(value, font: .monospacedDigitSystemFont(ofSize: 11, weight: .medium), color: .labelColor)
-        valueField.alignment = .right
-        valueField.frame = NSRect(x: x, y: y, width: width, height: 14)
+        let valueWeight: NSFont.Weight = isWideLayout ? .semibold : .bold
+        let valueField = makeTextField(value, font: Theme.monospacedDigitFont(ofSize: 13, weight: valueWeight), color: Theme.textPrimary)
+        valueField.frame = NSRect(x: x, y: y + 13, width: width, height: 16)
         addSubview(valueField)
     }
 
-    // MARK: - Rate Limit Section
+    // MARK: - Weekly Usage Card
 
-    private func addRateLimitSection(at startY: CGFloat) -> CGFloat {
-        var y = startY
+    private func addWeeklyUsageCard(at startY: CGFloat) -> CGFloat {
+        let cardX = padding
+        let cardWidth = frame.width - padding * 2
+        let contentLeft = cardX + cardPadding
+        let contentWidth = cardWidth - cardPadding * 2
+        let innerPad: CGFloat = isWideLayout ? 16 : cardPadding
+
+        var y = startY + innerPad
 
         if let err = rateLimitError {
-            y = addLabel("Usage error: \(err)", at: y, font: .systemFont(ofSize: 12), color: .systemRed)
-            return y
+            y = addLabel("Usage error: \(err)", at: y, font: Theme.font(ofSize: 12), color: Theme.errorRed, inset: contentLeft)
+            let cardHeight = y - startY + innerPad
+            addCardBackground(at: startY, x: cardX, width: cardWidth, height: cardHeight)
+            return startY + cardHeight
         }
 
         guard let rl = rateLimitData else {
-            y = addLabel("Rate limits: loading...", at: y, font: .systemFont(ofSize: 12), color: .secondaryLabelColor)
-            return y
+            y = addLabel("Rate limits: loading...", at: y, font: Theme.font(ofSize: 11), color: Theme.textSecondary, inset: contentLeft)
+            let cardHeight = y - startY + innerPad
+            addCardBackground(at: startY, x: cardX, width: cardWidth, height: cardHeight)
+            return startY + cardHeight
         }
 
-        y = addUsageWindow("5-hour window", utilization: rl.fiveHourUtilization, resetsAt: rl.fiveHourResetsAt, showProjection: false, at: y)
-        y += sectionSpacing
-        y = addUsageWindow("7-day window", utilization: rl.sevenDayUtilization, resetsAt: rl.sevenDayResetsAt, showProjection: true, at: y)
-
-        return y
-    }
-
-    private func addUsageWindow(_ title: String, utilization: Double, resetsAt: Date?, showProjection: Bool, at startY: CGFloat) -> CGFloat {
-        var y = startY
-        let barWidth = frame.width - padding * 2
-
-        // Title row: "5-hour window" left, "43%" right
-        let titleField = makeTextField(title, font: .systemFont(ofSize: 11, weight: .medium), color: .secondaryLabelColor)
-        titleField.frame = NSRect(x: padding, y: y, width: barWidth * 0.6, height: 14)
+        // Title: "WEEKLY USAGE" left, large percentage right
+        let weeklyWeight: NSFont.Weight = isWideLayout ? .semibold : .bold
+        let titleField = makeTextField("WEEKLY USAGE", font: Theme.font(ofSize: 14, weight: weeklyWeight), color: Theme.textPrimary)
+        titleField.frame = NSRect(x: contentLeft, y: y, width: contentWidth * 0.6, height: 18)
         addSubview(titleField)
 
-        let pctField = makeTextField(Formatters.formatPercent(utilization), font: .monospacedDigitSystemFont(ofSize: 11, weight: .semibold), color: colorForUtilization(utilization))
+        let pctWeight: NSFont.Weight = isWideLayout ? .semibold : .bold
+        let pctField = makeTextField(
+            Formatters.formatPercent(rl.sevenDayUtilization),
+            font: Theme.monospacedDigitFont(ofSize: 28, weight: pctWeight),
+            color: Theme.textPrimary
+        )
         pctField.alignment = .right
-        pctField.frame = NSRect(x: padding, y: y, width: barWidth, height: 14)
+        pctField.frame = NSRect(x: contentLeft, y: y - 10, width: contentWidth, height: 36)
         addSubview(pctField)
-        y += 18
+        y += isWideLayout ? 22 : 20
+
+        // Subtitle: "7-day window"
+        let subtitleField = makeTextField("7-day window", font: Theme.font(ofSize: 12), color: Theme.textSecondary)
+        subtitleField.frame = NSRect(x: contentLeft, y: y, width: contentWidth * 0.6, height: 16)
+        addSubview(subtitleField)
+        y += isWideLayout ? 26 : 22
 
         // Progress bar
-        let barHeight: CGFloat = 8
-        let barView = ProgressBarView(utilization: utilization, frame: NSRect(x: padding, y: y, width: barWidth, height: barHeight))
+        let barHeight: CGFloat = isWideLayout ? 16 : 14
+        let barView = ProgressBarView(utilization: rl.sevenDayUtilization, enhanced: isWideLayout, frame: NSRect(x: contentLeft, y: y, width: contentWidth, height: barHeight))
         addSubview(barView)
-        y += barHeight + 6
+        y += barHeight + (isWideLayout ? 14 : 10)
 
-        // Reset time
-        guard let resetsAt else {
-            y = addLabel("No reset scheduled", at: y, font: .systemFont(ofSize: 11), color: .secondaryLabelColor)
-            return y
+        // Reset time (left) and Projected (right) on same line
+        if let resetsAt = rl.sevenDayResetsAt {
+            let resetStr = "Resets in \(Formatters.formatTimeRemaining(until: resetsAt))"
+            let resetField = makeTextField(resetStr, font: Theme.font(ofSize: 11), color: Theme.textSecondary)
+            resetField.frame = NSRect(x: contentLeft, y: y, width: contentWidth * 0.5, height: 16)
+            addSubview(resetField)
+
+            if let projected = Formatters.projectedUsage(utilization: rl.sevenDayUtilization, resetsAt: resetsAt) {
+                let projStr = "Projected: \(Formatters.formatPercent(projected))"
+                let projField = makeTextField(projStr, font: Theme.font(ofSize: 11, weight: .medium), color: Theme.textSecondary)
+                projField.alignment = .right
+                projField.frame = NSRect(x: contentLeft, y: y, width: contentWidth, height: 16)
+                addSubview(projField)
+            }
+            y += isWideLayout ? 22 : 20
+        } else {
+            y = addLabel("No reset scheduled", at: y, font: Theme.font(ofSize: 11), color: Theme.textSecondary, inset: contentLeft)
         }
 
-        let resetStr = "Resets in \(Formatters.formatTimeRemaining(until: resetsAt))"
-        y = addLabel(resetStr, at: y, font: .systemFont(ofSize: 11), color: .secondaryLabelColor)
-
-        guard showProjection else { return y }
-        guard let projected = Formatters.projectedUsage(utilization: utilization, resetsAt: resetsAt) else { return y }
-        let projStr = "Projected: \(Formatters.formatPercent(projected))"
-        y = addLabel(projStr, at: y, font: .systemFont(ofSize: 11, weight: .medium), color: .secondaryLabelColor)
-
+        y += innerPad
+        let cardHeight = y - startY
+        addCardBackground(at: startY, x: cardX, width: cardWidth, height: cardHeight)
         return y
     }
 
@@ -180,23 +246,29 @@ final class MenuContentView: NSView {
 
     private func addLastRefresh(at y: CGFloat) -> CGFloat {
         let timeStr = lastRefresh.map { Formatters.formatTimestamp($0) } ?? "never"
-        return addLabel("Last refresh: \(timeStr)", at: y, font: .systemFont(ofSize: 10), color: .tertiaryLabelColor)
+        return addLabel("Last refresh: \(timeStr)", at: y, font: Theme.font(ofSize: 9), color: Theme.textTertiary, inset: padding + 4)
+    }
+
+    // MARK: - Card Background
+
+    private func addCardBackground(at y: CGFloat, x: CGFloat, width: CGFloat, height: CGFloat) {
+        let cardBg = NSView(frame: NSRect(x: x, y: y, width: width, height: height))
+        cardBg.wantsLayer = true
+        cardBg.layer?.cornerRadius = 10
+        cardBg.layer?.backgroundColor = Theme.cardBackground.cgColor
+        cardBg.layer?.borderWidth = 1
+        cardBg.layer?.borderColor = Theme.cardBorder.cgColor
+        addSubview(cardBg, positioned: .below, relativeTo: subviews.first)
     }
 
     // MARK: - Helpers
 
-    private func addDivider(at y: CGFloat) -> CGFloat {
-        let divider = NSBox(frame: NSRect(x: padding, y: y, width: frame.width - padding * 2, height: 1))
-        divider.boxType = .separator
-        addSubview(divider)
-        return y + 1
-    }
-
     @discardableResult
-    private func addLabel(_ text: String, at y: CGFloat, font: NSFont, color: NSColor) -> CGFloat {
+    private func addLabel(_ text: String, at y: CGFloat, font: NSFont, color: NSColor, inset: CGFloat) -> CGFloat {
         let field = makeTextField(text, font: font, color: color)
-        let size = field.sizeThatFits(NSSize(width: frame.width - padding * 2, height: .greatestFiniteMagnitude))
-        field.frame = NSRect(x: padding, y: y, width: frame.width - padding * 2, height: size.height)
+        let maxWidth = frame.width - inset - padding
+        let size = field.sizeThatFits(NSSize(width: maxWidth, height: .greatestFiniteMagnitude))
+        field.frame = NSRect(x: inset, y: y, width: maxWidth, height: size.height)
         addSubview(field)
         return y + size.height + lineSpacing
     }
@@ -212,14 +284,6 @@ final class MenuContentView: NSView {
         return field
     }
 
-    private func colorForUtilization(_ pct: Double) -> NSColor {
-        guard pct < 60 else {
-            guard pct < 85 else { return .secondaryLabelColor }
-            return .secondaryLabelColor
-        }
-        return .labelColor
-    }
-
     override func mouseUp(with event: NSEvent) {
         // Swallow clicks so the menu doesn't close
     }
@@ -229,9 +293,11 @@ final class MenuContentView: NSView {
 
 final class ProgressBarView: NSView {
     private let utilization: Double
+    private let enhanced: Bool
 
-    init(utilization: Double, frame: NSRect) {
+    init(utilization: Double, enhanced: Bool = false, frame: NSRect) {
         self.utilization = utilization
+        self.enhanced = enhanced
         super.init(frame: frame)
         wantsLayer = true
     }
@@ -244,30 +310,44 @@ final class ProgressBarView: NSView {
 
         // Track background
         let trackPath = NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius)
-        NSColor.separatorColor.withAlphaComponent(0.3).setFill()
+        NSColor.white.withAlphaComponent(0.10).setFill()
         trackPath.fill()
 
-        // Track border
-        let insetRect = bounds.insetBy(dx: 0.5, dy: 0.5)
-        let borderPath = NSBezierPath(roundedRect: insetRect, xRadius: radius, yRadius: radius)
-        borderPath.lineWidth = 1
-        NSColor.separatorColor.setStroke()
-        borderPath.stroke()
+        // Border around track (enhanced mode)
+        if enhanced {
+            NSColor.white.withAlphaComponent(0.12).setStroke()
+            trackPath.lineWidth = 0.5
+            trackPath.stroke()
+        }
 
-        // Fill
+        // Fill with gradient
         let fillWidth = max(0, min(bounds.width, bounds.width * CGFloat(utilization / 100.0)))
         guard fillWidth > 0 else { return }
         let fillRect = NSRect(x: 0, y: 0, width: fillWidth, height: bounds.height)
         let fillPath = NSBezierPath(roundedRect: fillRect, xRadius: radius, yRadius: radius)
-        fillColor().setFill()
-        fillPath.fill()
-    }
 
-    private func fillColor() -> NSColor {
-        guard utilization < 60 else {
-            guard utilization < 85 else { return NSColor(calibratedRed: 0.75, green: 0.22, blue: 0.17, alpha: 0.8) }
-            return NSColor(calibratedRed: 0.80, green: 0.55, blue: 0.15, alpha: 0.8)
+        // Glow layer (draw before fill for bloom effect)
+        let ctx = NSGraphicsContext.current
+        ctx?.saveGraphicsState()
+        let shadow = NSShadow()
+        shadow.shadowColor = NSColor(srgbRed: 0.15, green: 0.65, blue: 1.0, alpha: enhanced ? 1.0 : 0.8)
+        shadow.shadowBlurRadius = enhanced ? 18 : 12
+        shadow.shadowOffset = NSSize(width: 0, height: 0)
+        shadow.set()
+        if let gradient = NSGradient(colors: [
+            NSColor(srgbRed: 0.10, green: 0.75, blue: 1.0, alpha: 1),
+            NSColor(srgbRed: 0.25, green: 0.55, blue: 0.95, alpha: 1),
+        ]) {
+            gradient.draw(in: fillPath, angle: 0)
         }
-        return NSColor(calibratedRed: 0.25, green: 0.50, blue: 0.75, alpha: 0.8)
+        ctx?.restoreGraphicsState()
+
+        // Fill on top (crisp)
+        if let gradient = NSGradient(colors: [
+            NSColor(srgbRed: 0.10, green: 0.75, blue: 1.0, alpha: 1),
+            NSColor(srgbRed: 0.25, green: 0.55, blue: 0.95, alpha: 1),
+        ]) {
+            gradient.draw(in: fillPath, angle: 0)
+        }
     }
 }

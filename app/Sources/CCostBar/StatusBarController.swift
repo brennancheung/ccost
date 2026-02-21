@@ -150,9 +150,10 @@ final class StatusBarController: NSObject {
     private func buildMenu() {
         let menu = NSMenu()
         menu.autoenablesItems = false
+        menu.appearance = NSAppearance(named: .darkAqua)
 
-        // Custom data view
-        let contentView = MenuContentView(
+        // Custom data view (uses the original menu bar design)
+        let contentView = MenuBarContentView(
             costData: costData,
             rateLimitData: rateLimitData,
             costError: costError,

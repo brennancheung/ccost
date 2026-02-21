@@ -20,6 +20,7 @@ let package = Package(
             name: "CCostBar",
             dependencies: ["CCostLib"],
             path: "Sources/CCostBar",
+            resources: [.copy("Resources")],
             swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
         ),
     ]
