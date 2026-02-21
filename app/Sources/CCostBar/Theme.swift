@@ -2,10 +2,10 @@ import AppKit
 import CoreText
 
 enum Theme {
-    // MARK: - Backgrounds
-    static let background = NSColor(srgbRed: 0.039, green: 0.086, blue: 0.157, alpha: 1)       // #0a1628
-    static let cardBackground = NSColor(srgbRed: 0.055, green: 0.110, blue: 0.200, alpha: 1)    // #0e1c33
-    static let cardBorder = NSColor.white.withAlphaComponent(0.06)
+    // MARK: - Backgrounds (dark purple-slate)
+    static let background = NSColor(srgbRed: 0.055, green: 0.06, blue: 0.10, alpha: 1)          // #0e0f1a
+    static let cardBackground = NSColor(srgbRed: 0.075, green: 0.08, blue: 0.14, alpha: 1)      // #131424
+    static let cardBorder = NSColor.white.withAlphaComponent(0.07)
     static let cardGlow = NSColor(srgbRed: 0.2, green: 0.4, blue: 0.8, alpha: 0.15)
 
     // MARK: - Text
@@ -21,8 +21,8 @@ enum Theme {
     static let barTrack = NSColor.white.withAlphaComponent(0.08)
 
     // MARK: - History bars
-    static let historyBarStart = NSColor(srgbRed: 0.90, green: 0.35, blue: 0.20, alpha: 0.96)   // orange-red
-    static let historyBarEnd = NSColor(srgbRed: 0.25, green: 0.70, blue: 0.90, alpha: 0.96)     // blue-cyan
+    static let historyBarStart = NSColor(srgbRed: 0.25, green: 0.70, blue: 0.90, alpha: 0.96)     // blue-cyan
+    static let historyBarEnd = NSColor(srgbRed: 0.90, green: 0.35, blue: 0.20, alpha: 0.96)     // orange-red
 
     // MARK: - Gauge
     static let gaugeArcStart = NSColor(srgbRed: 0.85, green: 0.20, blue: 0.15, alpha: 1)        // red

@@ -9,7 +9,7 @@ final class MenuContentView: NSView {
 
     private let padding: CGFloat = 12
     private let cardPadding: CGFloat = 12
-    private let sectionSpacing: CGFloat = 10
+    private let sectionSpacing: CGFloat = 20
     private let lineSpacing: CGFloat = 4
 
     private var isWideLayout: Bool { frame.width > 400 }
@@ -43,9 +43,6 @@ final class MenuContentView: NSView {
         y = addCostCard(at: y)
         y += sectionSpacing
         y = addWeeklyUsageCard(at: y)
-        y += sectionSpacing
-        y = addLastRefresh(at: y)
-        y += padding
 
         let totalHeight = y
         for sub in subviews {
@@ -75,55 +72,57 @@ final class MenuContentView: NSView {
         let contentWidth = cardWidth - cardPadding * 2
 
         // "TODAY'S SPEND" header
-        y = addLabel("TODAY'S SPEND", at: y, font: Theme.font(ofSize: 9, weight: .bold), color: Theme.textAccent, inset: contentLeft)
+        y += 32
+        y = addLabel("TODAY'S SPEND", at: y, font: Theme.font(ofSize: 13, weight: .bold), color: Theme.textAccent, inset: contentLeft + 12)
 
         // Big cost number
         let costWeight: NSFont.Weight = isWideLayout ? .semibold : .bold
-        y = addLabel(Formatters.formatCost(cost.cost), at: y, font: Theme.font(ofSize: 26, weight: costWeight), color: Theme.textPrimary, inset: contentLeft)
+        y = addLabel(Formatters.formatCost(cost.cost), at: y, font: Theme.font(ofSize: 40, weight: costWeight), color: Theme.textPrimary, inset: contentLeft + 12)
         y += 4
 
-        // Determine gauge and stats layout
         let rl = rateLimitData
-        let gaugeSize: CGFloat = isWideLayout ? 150 : 100
 
         if isWideLayout {
-            // Side-by-side: stats grid on left ~55%, gauge on right ~45%
-            let statsWidth = contentWidth * 0.55
-            let gaugeX = contentLeft + statsWidth
-            let statsStartY = y
+            let statsX: CGFloat = contentLeft + 180
+            let statsY: CGFloat = startY + 32
+            let statsWidth = contentWidth * 0.50
+            addStatsGrid(cost, at: statsY, x: statsX, width: statsWidth - 8)
 
-            y = addStatsGrid(cost, at: y, x: contentLeft, width: statsWidth - 8)
-
-            // Gauge on the right
             if let rl {
+                let gaugeSize: CGFloat = 140
+                let gaugeX = contentLeft + contentWidth - gaugeSize + 8
+                let gaugeY = startY + cardPadding - 4
                 let gaugeView = CircularGaugeView(
                     utilization: rl.fiveHourUtilization,
                     resetsAt: rl.fiveHourResetsAt,
-                    frame: NSRect(x: gaugeX, y: statsStartY - 4, width: contentWidth - statsWidth, height: gaugeSize)
+                    frame: NSRect(x: gaugeX, y: gaugeY, width: gaugeSize, height: gaugeSize)
                 )
                 addSubview(gaugeView)
-                y = max(y, statsStartY + gaugeSize)
             }
+
+            let cardHeight: CGFloat = 150
+            addCardBackground(at: startY, x: cardX, width: cardWidth, height: cardHeight)
+            return startY + cardHeight
         } else {
-            // Stacked: stats grid then gauge below
             y = addStatsGrid(cost, at: y, x: contentLeft, width: contentWidth)
             y += 6
 
             if let rl {
+                let narrowGaugeSize: CGFloat = 100
                 let gaugeView = CircularGaugeView(
                     utilization: rl.fiveHourUtilization,
                     resetsAt: rl.fiveHourResetsAt,
-                    frame: NSRect(x: contentLeft + (contentWidth - gaugeSize) / 2, y: y, width: gaugeSize, height: gaugeSize)
+                    frame: NSRect(x: contentLeft + (contentWidth - narrowGaugeSize) / 2, y: y, width: narrowGaugeSize, height: narrowGaugeSize)
                 )
                 addSubview(gaugeView)
-                y += gaugeSize + 4
+                y += narrowGaugeSize + 4
             }
-        }
 
-        y += cardPadding
-        let cardHeight = y - startY
-        addCardBackground(at: startY, x: cardX, width: cardWidth, height: cardHeight)
-        return y
+            y += cardPadding
+            let cardHeight = y - startY
+            addCardBackground(at: startY, x: cardX, width: cardWidth, height: cardHeight)
+            return y
+        }
     }
 
     private func addStatsGrid(_ cost: CostData, at startY: CGFloat, x: CGFloat, width: CGFloat) -> CGFloat {
@@ -147,19 +146,19 @@ final class MenuContentView: NSView {
                 let colX = x + CGFloat(colIdx) * (colWidth + colGap)
                 addStackedStat(pair.0, value: pair.1, at: y, x: colX, width: colWidth)
             }
-            y += 32
+            y += 50
         }
         return y
     }
 
     private func addStackedStat(_ label: String, value: String, at y: CGFloat, x: CGFloat, width: CGFloat) {
-        let labelField = makeTextField(label, font: Theme.font(ofSize: 9), color: Theme.textSecondary)
-        labelField.frame = NSRect(x: x, y: y, width: width, height: 12)
+        let labelField = makeTextField(label, font: Theme.font(ofSize: 11), color: Theme.textSecondary)
+        labelField.frame = NSRect(x: x, y: y, width: width, height: 14)
         addSubview(labelField)
 
         let valueWeight: NSFont.Weight = isWideLayout ? .semibold : .bold
-        let valueField = makeTextField(value, font: Theme.monospacedDigitFont(ofSize: 13, weight: valueWeight), color: Theme.textPrimary)
-        valueField.frame = NSRect(x: x, y: y + 13, width: width, height: 16)
+        let valueField = makeTextField(value, font: Theme.monospacedDigitFont(ofSize: 15, weight: valueWeight), color: Theme.textPrimary)
+        valueField.frame = NSRect(x: x, y: y + 15, width: width, height: 18)
         addSubview(valueField)
     }
 
@@ -189,19 +188,17 @@ final class MenuContentView: NSView {
         }
 
         // Title: "WEEKLY USAGE" left, large percentage right
-        let weeklyWeight: NSFont.Weight = isWideLayout ? .semibold : .bold
-        let titleField = makeTextField("WEEKLY USAGE", font: Theme.font(ofSize: 14, weight: weeklyWeight), color: Theme.textPrimary)
+        let titleField = makeTextField("WEEKLY USAGE", font: Theme.font(ofSize: 13, weight: .medium), color: Theme.textPrimary)
         titleField.frame = NSRect(x: contentLeft, y: y, width: contentWidth * 0.6, height: 18)
         addSubview(titleField)
 
-        let pctWeight: NSFont.Weight = isWideLayout ? .semibold : .bold
         let pctField = makeTextField(
             Formatters.formatPercent(rl.sevenDayUtilization),
-            font: Theme.monospacedDigitFont(ofSize: 28, weight: pctWeight),
+            font: Theme.monospacedDigitFont(ofSize: 28, weight: .medium),
             color: Theme.textPrimary
         )
         pctField.alignment = .right
-        pctField.frame = NSRect(x: contentLeft, y: y - 10, width: contentWidth, height: 36)
+        pctField.frame = NSRect(x: contentLeft - 2, y: y + 2, width: contentWidth, height: 36)
         addSubview(pctField)
         y += isWideLayout ? 22 : 20
 
@@ -252,12 +249,7 @@ final class MenuContentView: NSView {
     // MARK: - Card Background
 
     private func addCardBackground(at y: CGFloat, x: CGFloat, width: CGFloat, height: CGFloat) {
-        let cardBg = NSView(frame: NSRect(x: x, y: y, width: width, height: height))
-        cardBg.wantsLayer = true
-        cardBg.layer?.cornerRadius = 10
-        cardBg.layer?.backgroundColor = Theme.cardBackground.cgColor
-        cardBg.layer?.borderWidth = 1
-        cardBg.layer?.borderColor = Theme.cardBorder.cgColor
+        let cardBg = GradientCardView(frame: NSRect(x: x, y: y, width: width, height: height))
         addSubview(cardBg, positioned: .below, relativeTo: subviews.first)
     }
 
@@ -310,15 +302,8 @@ final class ProgressBarView: NSView {
 
         // Track background
         let trackPath = NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius)
-        NSColor.white.withAlphaComponent(0.10).setFill()
+        NSColor.white.withAlphaComponent(0.08).setFill()
         trackPath.fill()
-
-        // Border around track (enhanced mode)
-        if enhanced {
-            NSColor.white.withAlphaComponent(0.12).setStroke()
-            trackPath.lineWidth = 0.5
-            trackPath.stroke()
-        }
 
         // Fill with gradient
         let fillWidth = max(0, min(bounds.width, bounds.width * CGFloat(utilization / 100.0)))
@@ -326,28 +311,69 @@ final class ProgressBarView: NSView {
         let fillRect = NSRect(x: 0, y: 0, width: fillWidth, height: bounds.height)
         let fillPath = NSBezierPath(roundedRect: fillRect, xRadius: radius, yRadius: radius)
 
+        let fillColors = [
+            NSColor(srgbRed: 0.00, green: 0.85, blue: 1.0, alpha: 1),   // bright cyan
+            NSColor(srgbRed: 0.20, green: 0.55, blue: 0.95, alpha: 1),  // mid blue
+        ]
+
         // Glow layer (draw before fill for bloom effect)
-        let ctx = NSGraphicsContext.current
-        ctx?.saveGraphicsState()
-        let shadow = NSShadow()
-        shadow.shadowColor = NSColor(srgbRed: 0.15, green: 0.65, blue: 1.0, alpha: enhanced ? 1.0 : 0.8)
-        shadow.shadowBlurRadius = enhanced ? 18 : 12
-        shadow.shadowOffset = NSSize(width: 0, height: 0)
-        shadow.set()
-        if let gradient = NSGradient(colors: [
-            NSColor(srgbRed: 0.10, green: 0.75, blue: 1.0, alpha: 1),
-            NSColor(srgbRed: 0.25, green: 0.55, blue: 0.95, alpha: 1),
-        ]) {
-            gradient.draw(in: fillPath, angle: 0)
+        if enhanced {
+            let ctx = NSGraphicsContext.current
+            ctx?.saveGraphicsState()
+            let shadow = NSShadow()
+            shadow.shadowColor = NSColor(srgbRed: 0.10, green: 0.70, blue: 1.0, alpha: 0.9)
+            shadow.shadowBlurRadius = 20
+            shadow.shadowOffset = NSSize(width: 0, height: 0)
+            shadow.set()
+            if let gradient = NSGradient(colors: fillColors) {
+                gradient.draw(in: fillPath, angle: 0)
+            }
+            ctx?.restoreGraphicsState()
         }
-        ctx?.restoreGraphicsState()
 
         // Fill on top (crisp)
-        if let gradient = NSGradient(colors: [
-            NSColor(srgbRed: 0.10, green: 0.75, blue: 1.0, alpha: 1),
-            NSColor(srgbRed: 0.25, green: 0.55, blue: 0.95, alpha: 1),
-        ]) {
+        if let gradient = NSGradient(colors: fillColors) {
             gradient.draw(in: fillPath, angle: 0)
         }
+
+        // White border around the filled portion
+        if enhanced {
+            let strokeInset = fillRect.insetBy(dx: 0.5, dy: 0.5)
+            let strokePath = NSBezierPath(roundedRect: strokeInset, xRadius: radius, yRadius: radius)
+            strokePath.lineWidth = 1.0
+            NSColor.white.withAlphaComponent(0.35).setStroke()
+            strokePath.stroke()
+        }
+    }
+}
+
+// MARK: - Gradient Card Background
+
+final class GradientCardView: NSView {
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        layer?.cornerRadius = 10
+        layer?.borderWidth = 1
+        layer?.borderColor = Theme.cardBorder.cgColor
+        layer?.masksToBounds = true
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard let ctx = NSGraphicsContext.current?.cgContext else { return }
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+
+        // Subtle diagonal gradient: dark purple-slate
+        let topColor = NSColor(srgbRed: 0.09, green: 0.095, blue: 0.155, alpha: 1).cgColor
+        let bottomColor = NSColor(srgbRed: 0.065, green: 0.07, blue: 0.115, alpha: 1).cgColor
+
+        let colors = [topColor, bottomColor] as CFArray
+        guard let gradient = CGGradient(colorsSpace: colorSpace, colors: colors, locations: [0, 1]) else { return }
+        ctx.drawLinearGradient(gradient,
+                               start: CGPoint(x: bounds.midX * 0.85, y: bounds.maxY),
+                               end: CGPoint(x: bounds.midX * 1.15, y: bounds.minY),
+                               options: [])
     }
 }

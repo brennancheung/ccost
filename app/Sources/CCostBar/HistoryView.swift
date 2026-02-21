@@ -172,7 +172,7 @@ final class HistoryContentView: NSView {
     private var dataColumnsWidth: CGFloat { colCost + colSess + colIn + colOut + colCacheW + colCacheR }
     private var barLeft: CGFloat { outerPadding + dateWidth + gapSmall }
     private var barWidth: CGFloat {
-        max(220, availableWidth - (outerPadding * 2) - dateWidth - gapSmall - (gapLarge * 2) - dataColumnsWidth)
+        max(120, availableWidth - (outerPadding * 2) - dateWidth - gapSmall - (gapLarge * 2) - dataColumnsWidth)
     }
     private var dividerX: CGFloat { barLeft + barWidth + gapLarge }
     private var tableLeft: CGFloat { dividerX + gapLarge }
@@ -193,7 +193,7 @@ final class HistoryContentView: NSView {
 
         let kpiHeight: CGFloat = showKPIStrip ? (kpiBandHeight + 8) : 0
         let height = outerPadding + kpiHeight + headerHeight + 4 + rowAreaHeight + 4 + totalRowHeight + 6 + axisBandHeight + footerPadding
-        frame = NSRect(x: 0, y: 0, width: max(availableWidth, 560), height: max(height, 230))
+        frame = NSRect(x: 0, y: 0, width: availableWidth, height: max(height, 230))
         needsDisplay = true
     }
 

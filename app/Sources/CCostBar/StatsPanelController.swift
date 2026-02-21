@@ -28,8 +28,8 @@ final class StatsPanelController {
     var rateLimitError: String?
     var lastRefresh: Date?
 
-    private let panelWidth: CGFloat = 900
-    private let maxPanelHeight: CGFloat = 700
+    private let panelWidth: CGFloat = 684
+    private let maxPanelHeight: CGFloat = 1060
 
     func toggle() {
         guard let panel, panel.isVisible else {
@@ -139,45 +139,45 @@ final class StatsPanelController {
 
         // History section (only if data loaded)
         if let data = historyData, !data.isEmpty {
-            let historyPadding: CGFloat = 12
-            let historyWidth = panelWidth - historyPadding * 2
+            let sectionPadding: CGFloat = 12
+            let sectionWidth = panelWidth - sectionPadding * 2
+            let cardInset: CGFloat = 14
 
             // Stats summary section (30D TOTAL / AVG/DAY / MAX DAY)
-            let summaryY = statsHeight + 8
+            let sectionGap: CGFloat = 20
+            let summaryY = statsHeight + sectionGap
             let summaryBottom = addStatsSummary(data, at: summaryY, in: container)
 
-            // Divider
-            let dividerY = summaryBottom + 8
-            let divider = NSView(frame: NSRect(x: 16, y: dividerY, width: panelWidth - 32, height: 1))
-            divider.wantsLayer = true
-            divider.layer?.backgroundColor = Theme.divider.cgColor
-            container.addSubview(divider)
-
-            // "HISTORICAL DATA" header
-            let headerY = dividerY + 12
+            // "HISTORICAL DATA" header + content in gradient card
+            let cardY = summaryBottom + sectionGap
             let headerLabel = NSTextField(labelWithString: "HISTORICAL DATA")
             headerLabel.font = Theme.font(ofSize: 13, weight: .bold)
             headerLabel.textColor = Theme.textPrimary
             headerLabel.isBordered = false
             headerLabel.isEditable = false
             headerLabel.backgroundColor = .clear
-            headerLabel.frame = NSRect(x: historyPadding + 10, y: headerY, width: historyWidth, height: 18)
+            headerLabel.frame = NSRect(x: sectionPadding + cardInset, y: cardY + cardInset, width: sectionWidth - cardInset * 2, height: 18)
             container.addSubview(headerLabel)
 
             let historyContent = HistoryContentView()
             historyContent.drawsBackground = false
             historyContent.showKPIStrip = false
-            historyContent.availableWidth = historyWidth
+            historyContent.availableWidth = sectionWidth - cardInset * 2
             historyContent.updateData(data)
             let historyHeight = historyContent.frame.height
 
-            let historyY = headerY + 24
-            historyContent.frame = NSRect(x: historyPadding, y: historyY, width: historyWidth, height: historyHeight)
+            let historyY = cardY + cardInset + 24
+            historyContent.frame = NSRect(x: sectionPadding + cardInset, y: historyY, width: sectionWidth - cardInset * 2, height: historyHeight)
             container.addSubview(historyContent)
 
-            totalHeight = historyY + historyHeight + 12
+            let cardHeight = cardInset + 24 + historyHeight + cardInset
+            let cardBg = GradientCardView(frame: NSRect(x: sectionPadding, y: cardY, width: sectionWidth, height: cardHeight))
+            container.addSubview(cardBg, positioned: .below, relativeTo: container.subviews.first)
+
+            totalHeight = cardY + cardHeight + 12
         }
 
+        totalHeight = totalHeight + 64
         container.frame = NSRect(x: 0, y: 0, width: panelWidth, height: totalHeight)
 
         // Scroll view
@@ -204,7 +204,7 @@ final class StatsPanelController {
     private func addStatsSummary(_ data: [DailySummary], at y: CGFloat, in container: NSView) -> CGFloat {
         let sidePadding: CGFloat = 12
         let contentWidth = panelWidth - sidePadding * 2
-        let sectionHeight: CGFloat = 72
+        let sectionHeight: CGFloat = 88
 
         // Calculate stats
         var total = 0.0
@@ -237,13 +237,8 @@ final class StatsPanelController {
             maxDayCost = 0
         }
 
-        // Card background
-        let bg = NSView(frame: NSRect(x: sidePadding, y: y, width: contentWidth, height: sectionHeight))
-        bg.wantsLayer = true
-        bg.layer?.cornerRadius = 10
-        bg.layer?.backgroundColor = Theme.cardBackground.cgColor
-        bg.layer?.borderWidth = 1
-        bg.layer?.borderColor = Theme.cardBorder.cgColor
+        // Card background with gradient
+        let bg = GradientCardView(frame: NSRect(x: sidePadding, y: y, width: contentWidth, height: sectionHeight))
         container.addSubview(bg)
 
         // Three columns
@@ -260,21 +255,21 @@ final class StatsPanelController {
             let x = sidePadding + CGFloat(idx) * colWidth + innerPad
 
             let label = NSTextField(labelWithString: item.0)
-            label.font = Theme.font(ofSize: 10, weight: .medium)
+            label.font = Theme.font(ofSize: 13, weight: .medium)
             label.textColor = Theme.textTertiary
             label.isBordered = false
             label.isEditable = false
             label.backgroundColor = .clear
-            label.frame = NSRect(x: x, y: y + 14, width: colWidth - innerPad, height: 14)
+            label.frame = NSRect(x: x, y: y + 16, width: colWidth - innerPad, height: 16)
             container.addSubview(label)
 
             let value = NSTextField(labelWithString: item.1)
-            value.font = Theme.monospacedDigitFont(ofSize: 22, weight: .semibold)
+            value.font = Theme.monospacedDigitFont(ofSize: 28, weight: .medium)
             value.textColor = Theme.textPrimary
             value.isBordered = false
             value.isEditable = false
             value.backgroundColor = .clear
-            value.frame = NSRect(x: x, y: y + 32, width: colWidth - innerPad, height: 28)
+            value.frame = NSRect(x: x, y: y + 36, width: colWidth - innerPad, height: 36)
             container.addSubview(value)
         }
 
