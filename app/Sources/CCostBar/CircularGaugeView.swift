@@ -67,53 +67,69 @@ final class CircularGaugeView: NSView {
             ctx.restoreGState()
         }
 
-        // "SESSION USAGE" label
-        let labelText = "SESSION USAGE" as NSString
-        let labelFontSize: CGFloat = size * 0.065
+        // -- Measure all text elements --
+
+        // "SESSION USAGE" label (small context)
+        let labelText = "SESSION" as NSString
         let labelAttrs: [NSAttributedString.Key: Any] = [
-            .font: Theme.font(ofSize: labelFontSize, weight: .medium),
+            .font: Theme.font(ofSize: size * 0.06, weight: .medium),
             .foregroundColor: Theme.textSecondary,
         ]
         let labelSize = labelText.size(withAttributes: labelAttrs)
 
-        // Percentage text
+        // Percentage (hero)
         let pctText = String(format: "%.0f%%", utilization) as NSString
-        let pctFontSize: CGFloat = size * 0.22
         let pctAttrs: [NSAttributedString.Key: Any] = [
-            .font: Theme.monospacedDigitFont(ofSize: pctFontSize, weight: .medium),
+            .font: Theme.monospacedDigitFont(ofSize: size * 0.20, weight: .medium),
             .foregroundColor: Theme.textPrimary,
         ]
         let pctSize = pctText.size(withAttributes: pctAttrs)
 
-        // Stack vertically with spacing
-        let gap: CGFloat = 4
-        let totalTextHeight = labelSize.height + gap + pctSize.height
-        let textBlockTop = centerY + totalTextHeight / 2 + 6
-
-        labelText.draw(at: NSPoint(x: centerX - labelSize.width / 2, y: textBlockTop - labelSize.height), withAttributes: labelAttrs)
-        pctText.draw(at: NSPoint(x: centerX - pctSize.width / 2, y: textBlockTop - labelSize.height - gap - pctSize.height), withAttributes: pctAttrs)
-
-        // "Resets in" label below percentage
-        guard let resetsAt else { return }
+        // "Resets in" label
+        let hasReset = resetsAt != nil
         let resetLabelText = "Resets in" as NSString
-        let resetLabelFontSize: CGFloat = size * 0.055
         let resetLabelAttrs: [NSAttributedString.Key: Any] = [
-            .font: Theme.font(ofSize: resetLabelFontSize),
+            .font: Theme.font(ofSize: size * 0.06),
             .foregroundColor: Theme.textTertiary,
         ]
-        let resetLabelSize = resetLabelText.size(withAttributes: resetLabelAttrs)
-        let resetLabelY = textBlockTop - labelSize.height - gap - pctSize.height - gap - resetLabelSize.height
-        resetLabelText.draw(at: NSPoint(x: centerX - resetLabelSize.width / 2, y: resetLabelY), withAttributes: resetLabelAttrs)
+        let resetLabelSize = hasReset ? resetLabelText.size(withAttributes: resetLabelAttrs) : .zero
 
-        // Time value on next line, bigger
-        let timeText = Formatters.formatTimeRemaining(until: resetsAt) as NSString
-        let timeFontSize: CGFloat = size * 0.09
+        // Time value (secondary hero)
+        let timeText = resetsAt.map { Formatters.formatTimeRemaining(until: $0) as NSString }
         let timeAttrs: [NSAttributedString.Key: Any] = [
-            .font: Theme.monospacedDigitFont(ofSize: timeFontSize, weight: .medium),
+            .font: Theme.monospacedDigitFont(ofSize: size * 0.10, weight: .medium),
             .foregroundColor: Theme.textSecondary,
         ]
-        let timeSize = timeText.size(withAttributes: timeAttrs)
-        let timeY = resetLabelY - 2 - timeSize.height
-        timeText.draw(at: NSPoint(x: centerX - timeSize.width / 2, y: timeY), withAttributes: timeAttrs)
+        let timeSize = timeText?.size(withAttributes: timeAttrs) ?? .zero
+
+        // -- Stack with balanced spacing, centered in arc --
+        let gapTight: CGFloat = 1    // between tightly-coupled pairs
+        let gapSection: CGFloat = 5  // between percentage and reset section
+
+        var totalHeight = labelSize.height + gapTight + pctSize.height
+        if hasReset {
+            totalHeight += gapSection + resetLabelSize.height + gapTight + timeSize.height
+        }
+
+        // Nudge up 2px so it sits optically centered (arc gap is at bottom)
+        var y = centerY + totalHeight / 2
+
+        // Draw top-down (CG y-up: highest y = top)
+        y -= labelSize.height
+        labelText.draw(at: NSPoint(x: centerX - labelSize.width / 2, y: y), withAttributes: labelAttrs)
+        y -= gapTight
+
+        y -= pctSize.height
+        pctText.draw(at: NSPoint(x: centerX - pctSize.width / 2, y: y), withAttributes: pctAttrs)
+
+        guard hasReset else { return }
+        y -= gapSection
+
+        y -= resetLabelSize.height
+        resetLabelText.draw(at: NSPoint(x: centerX - resetLabelSize.width / 2, y: y), withAttributes: resetLabelAttrs)
+        y -= gapTight
+
+        y -= timeSize.height
+        timeText!.draw(at: NSPoint(x: centerX - timeSize.width / 2, y: y), withAttributes: timeAttrs)
     }
 }
