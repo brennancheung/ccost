@@ -88,26 +88,32 @@ final class CircularGaugeView: NSView {
         // Stack vertically with spacing
         let gap: CGFloat = 4
         let totalTextHeight = labelSize.height + gap + pctSize.height
-        let textBlockTop = centerY + totalTextHeight / 2
+        let textBlockTop = centerY + totalTextHeight / 2 + 6
 
         labelText.draw(at: NSPoint(x: centerX - labelSize.width / 2, y: textBlockTop - labelSize.height), withAttributes: labelAttrs)
         pctText.draw(at: NSPoint(x: centerX - pctSize.width / 2, y: textBlockTop - labelSize.height - gap - pctSize.height), withAttributes: pctAttrs)
 
-        // Reset time below percentage
-        let resetStr: String
-        if let resetsAt {
-            resetStr = "Resets in \(Formatters.formatTimeRemaining(until: resetsAt))"
-        } else {
-            resetStr = ""
-        }
-        guard !resetStr.isEmpty else { return }
-        let resetFontSize: CGFloat = size * 0.055
-        let resetAttrs: [NSAttributedString.Key: Any] = [
-            .font: Theme.font(ofSize: resetFontSize),
+        // "Resets in" label below percentage
+        guard let resetsAt else { return }
+        let resetLabelText = "Resets in" as NSString
+        let resetLabelFontSize: CGFloat = size * 0.055
+        let resetLabelAttrs: [NSAttributedString.Key: Any] = [
+            .font: Theme.font(ofSize: resetLabelFontSize),
             .foregroundColor: Theme.textTertiary,
         ]
-        let resetSize = (resetStr as NSString).size(withAttributes: resetAttrs)
-        let resetY = textBlockTop - labelSize.height - gap - pctSize.height - gap - resetSize.height
-        (resetStr as NSString).draw(at: NSPoint(x: centerX - resetSize.width / 2, y: resetY), withAttributes: resetAttrs)
+        let resetLabelSize = resetLabelText.size(withAttributes: resetLabelAttrs)
+        let resetLabelY = textBlockTop - labelSize.height - gap - pctSize.height - gap - resetLabelSize.height
+        resetLabelText.draw(at: NSPoint(x: centerX - resetLabelSize.width / 2, y: resetLabelY), withAttributes: resetLabelAttrs)
+
+        // Time value on next line, bigger
+        let timeText = Formatters.formatTimeRemaining(until: resetsAt) as NSString
+        let timeFontSize: CGFloat = size * 0.09
+        let timeAttrs: [NSAttributedString.Key: Any] = [
+            .font: Theme.monospacedDigitFont(ofSize: timeFontSize, weight: .medium),
+            .foregroundColor: Theme.textSecondary,
+        ]
+        let timeSize = timeText.size(withAttributes: timeAttrs)
+        let timeY = resetLabelY - 2 - timeSize.height
+        timeText.draw(at: NSPoint(x: centerX - timeSize.width / 2, y: timeY), withAttributes: timeAttrs)
     }
 }

@@ -83,7 +83,7 @@ final class MenuContentView: NSView {
         let rl = rateLimitData
 
         if isWideLayout {
-            let statsX: CGFloat = contentLeft + 180
+            let statsX: CGFloat = contentLeft + 192
             let statsY: CGFloat = startY + 32
             let statsWidth = contentWidth * 0.50
             addStatsGrid(cost, at: statsY, x: statsX, width: statsWidth - 8)
