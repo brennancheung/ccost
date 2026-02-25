@@ -1,5 +1,13 @@
 import Foundation
 
+struct MenuBarToggles: Sendable {
+    let showCost: Bool
+    let showWeeklyPercent: Bool
+    let showWeeklyResetTime: Bool
+    let showSessionPercent: Bool
+    let showSessionResetTime: Bool
+}
+
 enum Formatters {
     private static let costFormatter: NumberFormatter = {
         let f = NumberFormatter()
@@ -47,29 +55,33 @@ enum Formatters {
         return filledStr + emptyStr
     }
 
-    static func formatMenuBar(cost: Double?, rateLimits: RateLimitData?, format: DisplayFormat) -> String {
-        let costStr = formatCost(cost ?? 0)
-        let percentStr = formatPercent(rateLimits?.sevenDayUtilization ?? 0)
-        let compactCost = String(format: "%.2f", cost ?? 0)
-        let compactPercent = String(format: "%.0f", rateLimits?.sevenDayUtilization ?? 0)
+    static func formatMenuBar(cost: Double?, rateLimits: RateLimitData?, toggles: MenuBarToggles) -> String {
+        var parts: [String] = []
 
-        let formatMap: [DisplayFormat: String] = [
-            .costAndPercent: "\(costStr) \u{00B7} \(percentStr)",
-            .costOnly: costStr,
-            .percentOnly: percentStr,
-            .compact: "\(compactCost)/\(compactPercent)",
-        ]
-        return formatMap[format] ?? costStr
-    }
+        if toggles.showCost {
+            parts.append(formatCost(cost ?? 0))
+        }
 
-    static func displayFormatLabel(_ format: DisplayFormat) -> String {
-        let labels: [DisplayFormat: String] = [
-            .costAndPercent: "$12.50 \u{00B7} 45%",
-            .costOnly: "$12.50",
-            .percentOnly: "45%",
-            .compact: "12.50/45",
-        ]
-        return labels[format] ?? ""
+        var weekParts: [String] = []
+        if toggles.showWeeklyPercent {
+            weekParts.append(formatPercent(rateLimits?.sevenDayUtilization ?? 0))
+        }
+        if toggles.showWeeklyResetTime, let resetsAt = rateLimits?.sevenDayResetsAt {
+            weekParts.append(formatTimeRemaining(until: resetsAt))
+        }
+        if !weekParts.isEmpty {
+            parts.append("[\(weekParts.joined(separator: " "))]")
+        }
+
+        if toggles.showSessionPercent {
+            parts.append(formatPercent(rateLimits?.fiveHourUtilization ?? 0))
+        }
+        if toggles.showSessionResetTime, let resetsAt = rateLimits?.fiveHourResetsAt {
+            parts.append(formatTimeRemaining(until: resetsAt))
+        }
+
+        guard !parts.isEmpty else { return "..." }
+        return parts.joined(separator: "  ")
     }
 
     static func formatTimestamp(_ date: Date) -> String {

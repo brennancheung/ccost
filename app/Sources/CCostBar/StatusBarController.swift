@@ -138,10 +138,17 @@ final class StatusBarController: NSObject {
     }
 
     private func updateMenuBarTitle() {
+        let toggles = MenuBarToggles(
+            showCost: settings.showCost,
+            showWeeklyPercent: settings.showWeeklyPercent,
+            showWeeklyResetTime: settings.showWeeklyResetTime,
+            showSessionPercent: settings.showSessionPercent,
+            showSessionResetTime: settings.showSessionResetTime
+        )
         statusItem?.button?.title = Formatters.formatMenuBar(
             cost: costData?.cost,
             rateLimits: rateLimitData,
-            format: settings.displayFormat
+            toggles: toggles
         )
     }
 
@@ -171,7 +178,7 @@ final class StatusBarController: NSObject {
         addCostRefreshSubmenu(to: menu)
         addRateLimitRefreshSubmenu(to: menu)
         menu.addItem(NSMenuItem.separator())
-        addDisplayFormatSubmenu(to: menu)
+        addDisplayToggleSubmenu(to: menu)
         addHotKeySubmenu(to: menu)
         menu.addItem(NSMenuItem.separator())
         addLaunchAtLoginItem(to: menu)
@@ -230,20 +237,26 @@ final class StatusBarController: NSObject {
         menu.addItem(container)
     }
 
-    private func addDisplayFormatSubmenu(to menu: NSMenu) {
+    private func addDisplayToggleSubmenu(to menu: NSMenu) {
         let submenu = NSMenu()
-        let currentFormat = settings.displayFormat
 
-        for format in DisplayFormat.allCases {
-            let label = Formatters.displayFormatLabel(format)
-            let item = NSMenuItem(title: label, action: #selector(formatSelected(_:)), keyEquivalent: "")
+        let toggles: [(String, Int, Bool)] = [
+            ("Today's Cost", 1, settings.showCost),
+            ("Weekly %", 2, settings.showWeeklyPercent),
+            ("Week Resets In", 3, settings.showWeeklyResetTime),
+            ("Session %", 4, settings.showSessionPercent),
+            ("Session Resets In", 5, settings.showSessionResetTime),
+        ]
+
+        for (label, tag, isOn) in toggles {
+            let item = NSMenuItem(title: label, action: #selector(displayToggleSelected(_:)), keyEquivalent: "")
             item.target = self
-            item.representedObject = format.rawValue as NSString
-            item.state = (format == currentFormat) ? .on : .off
+            item.tag = tag
+            item.state = isOn ? .on : .off
             submenu.addItem(item)
         }
 
-        let container = NSMenuItem(title: "Display Format", action: nil, keyEquivalent: "")
+        let container = NSMenuItem(title: "Display", action: nil, keyEquivalent: "")
         container.submenu = submenu
         menu.addItem(container)
     }
@@ -308,10 +321,13 @@ final class StatusBarController: NSObject {
         rebuildMenuDeferred()
     }
 
-    @objc private func formatSelected(_ sender: NSMenuItem) {
-        guard let rawValue = sender.representedObject as? NSString else { return }
-        guard let format = DisplayFormat(rawValue: rawValue as String) else { return }
-        settings.displayFormat = format
+    @objc private func displayToggleSelected(_ sender: NSMenuItem) {
+        let tag = sender.tag
+        if tag == 1 { settings.showCost = !settings.showCost }
+        if tag == 2 { settings.showWeeklyPercent = !settings.showWeeklyPercent }
+        if tag == 3 { settings.showWeeklyResetTime = !settings.showWeeklyResetTime }
+        if tag == 4 { settings.showSessionPercent = !settings.showSessionPercent }
+        if tag == 5 { settings.showSessionResetTime = !settings.showSessionResetTime }
         updateMenuBarTitle()
         rebuildMenuDeferred()
     }

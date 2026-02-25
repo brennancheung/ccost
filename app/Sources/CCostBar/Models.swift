@@ -74,13 +74,6 @@ let rateLimitRefreshLabels: [RateLimitRefreshInterval: String] = [
     .oneHour: "1 hour",
 ]
 
-enum DisplayFormat: String, CaseIterable, Sendable {
-    case costAndPercent = "costAndPercent"
-    case costOnly = "costOnly"
-    case percentOnly = "percentOnly"
-    case compact = "compact"
-}
-
 enum HotKeyCombo: String, CaseIterable, Sendable {
     case ctrlShiftC
     case optionShiftC

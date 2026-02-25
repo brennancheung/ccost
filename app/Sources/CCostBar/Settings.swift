@@ -5,7 +5,11 @@ final class Settings {
     private let defaults = UserDefaults.standard
     private let costIntervalKey = "refreshInterval"
     private let rateLimitIntervalKey = "rateLimitRefreshInterval"
-    private let formatKey = "displayFormat"
+    private let showCostKey = "showCost"
+    private let showWeeklyPercentKey = "showWeeklyPercent"
+    private let showWeeklyResetTimeKey = "showWeeklyResetTime"
+    private let showSessionPercentKey = "showSessionPercent"
+    private let showSessionResetTimeKey = "showSessionResetTime"
     private let launchAtLoginKey = "launchAtLogin"
     private let hotKeyComboKey = "hotKeyCombo"
 
@@ -27,12 +31,29 @@ final class Settings {
         set { defaults.set(newValue.rawValue, forKey: rateLimitIntervalKey) }
     }
 
-    var displayFormat: DisplayFormat {
-        get {
-            guard let raw = defaults.string(forKey: formatKey) else { return .costAndPercent }
-            return DisplayFormat(rawValue: raw) ?? .costAndPercent
-        }
-        set { defaults.set(newValue.rawValue, forKey: formatKey) }
+    var showCost: Bool {
+        get { defaults.object(forKey: showCostKey) != nil ? defaults.bool(forKey: showCostKey) : false }
+        set { defaults.set(newValue, forKey: showCostKey) }
+    }
+
+    var showWeeklyPercent: Bool {
+        get { defaults.object(forKey: showWeeklyPercentKey) != nil ? defaults.bool(forKey: showWeeklyPercentKey) : false }
+        set { defaults.set(newValue, forKey: showWeeklyPercentKey) }
+    }
+
+    var showWeeklyResetTime: Bool {
+        get { defaults.object(forKey: showWeeklyResetTimeKey) != nil ? defaults.bool(forKey: showWeeklyResetTimeKey) : false }
+        set { defaults.set(newValue, forKey: showWeeklyResetTimeKey) }
+    }
+
+    var showSessionPercent: Bool {
+        get { defaults.object(forKey: showSessionPercentKey) != nil ? defaults.bool(forKey: showSessionPercentKey) : true }
+        set { defaults.set(newValue, forKey: showSessionPercentKey) }
+    }
+
+    var showSessionResetTime: Bool {
+        get { defaults.object(forKey: showSessionResetTimeKey) != nil ? defaults.bool(forKey: showSessionResetTimeKey) : true }
+        set { defaults.set(newValue, forKey: showSessionResetTimeKey) }
     }
 
     var launchAtLogin: Bool {
