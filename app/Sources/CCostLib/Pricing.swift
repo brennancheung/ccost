@@ -4,6 +4,30 @@ public final class Pricing: @unchecked Sendable {
     public static let shared = Pricing()
 
     private let builtinPricing: [String: ModelPricing] = [
+        "claude-fable-5": ModelPricing(
+            inputPerMillion: 10,
+            outputPerMillion: 50,
+            cacheCreatePerMillion: 12.5,
+            cacheReadPerMillion: 1
+        ),
+        "claude-mythos-5": ModelPricing(
+            inputPerMillion: 10,
+            outputPerMillion: 50,
+            cacheCreatePerMillion: 12.5,
+            cacheReadPerMillion: 1
+        ),
+        "claude-opus-4-8": ModelPricing(
+            inputPerMillion: 5,
+            outputPerMillion: 25,
+            cacheCreatePerMillion: 6.25,
+            cacheReadPerMillion: 0.5
+        ),
+        "claude-opus-4-7": ModelPricing(
+            inputPerMillion: 5,
+            outputPerMillion: 25,
+            cacheCreatePerMillion: 6.25,
+            cacheReadPerMillion: 0.5
+        ),
         "claude-opus-4-6": ModelPricing(
             inputPerMillion: 5,
             outputPerMillion: 25,
